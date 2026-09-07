@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bezel Roulette</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --case-dark:#15171a;
+    --gold:#c9a24a;
+    --gold-bright:#f0d488;
+    --ivory:#efe6d2;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; min-height:100%;
+    background: radial-gradient(ellipse at 50% 20%, #26292e 0%, #121316 60%, #08090a 100%);
+    color:var(--ivory);
+    font-family:'Inter',sans-serif;
+    display:flex; justify-content:center;
+    overflow-y:auto; overflow-x:hidden;
+  }
+  .app-shell{
+    width:100%;
+    max-width:980px;
+    padding:32px 24px 48px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:20px;
+    user-select:none;
+  }
+  .header{ display:flex; flex-direction:column; align-items:center; gap:2px; margin-bottom:4px; }
+  .layout{
+    width:100%;
+    display:grid;
+    grid-template-columns:minmax(300px, 420px) minmax(300px, 1fr);
+    align-items:start;
+    gap:32px;
+  }
+  .panel-wheel{ display:flex; flex-direction:column; align-items:center; gap:18px; }
+  .panel-table{ display:flex; flex-direction:column; align-items:center; gap:14px; padding-top:6px; }
+  @media (max-width:820px){
+    .layout{ grid-template-columns:1fr; justify-items:center; }
+  }
+  .eyebrow{ font-family:'Cinzel',serif; letter-spacing:0.35em; font-size:12px; color:var(--gold); text-transform:uppercase; opacity:0.85; }
+  .title{ font-family:'Cinzel',serif; font-weight:600; font-size:22px; letter-spacing:0.08em; }
+  .case-wrap{ position:relative; width:min(74vw,420px); height:min(74vw,420px); filter:drop-shadow(0 30px 60px rgba(0,0,0,0.65)); }
+  svg{ width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
+  svg:active{ cursor:grabbing; }
+  .pointer-jewel{ filter:drop-shadow(0 0 4px rgba(240,212,136,0.8)); }
+  .readout{ display:flex; align-items:center; gap:14px; background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)); border:1px solid rgba(201,162,74,0.25); border-radius:999px; padding:10px 22px; min-width:220px; justify-content:center; }
+  .readout .num{ font-family:'Cinzel',serif; font-weight:700; font-size:20px; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.15); }
+  .readout .label{ font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:#b9b4a6; }
+  .controls{ display:flex; gap:14px; align-items:center; }
+  .crown-btn{ font-family:'Cinzel',serif; letter-spacing:0.18em; text-transform:uppercase; font-size:13px; color:var(--case-dark); background:linear-gradient(180deg, var(--gold-bright), var(--gold) 60%, #9c7c2f); border:none; padding:12px 26px; border-radius:999px; cursor:pointer; box-shadow:0 6px 16px rgba(201,162,74,0.35), inset 0 1px 0 rgba(255,255,255,0.5); transition:transform 0.15s ease, box-shadow 0.15s ease; }
+  .crown-btn:hover{ transform:translateY(-1px); }
+  .crown-btn:active{ transform:translateY(1px) scale(0.98); }
+  .crown-btn:disabled{ opacity:0.5; cursor:not-allowed; transform:none; }
+  .num-input{
+    width:88px;
+    font-family:'Cinzel',serif;
+    font-weight:600;
+    font-size:15px;
+    text-align:center;
+    color:var(--ivory);
+    background:#1c1e22;
+    border:1px solid rgba(201,162,74,0.4);
+    border-radius:999px;
+    padding:11px 10px;
+    outline:none;
+  }
+  .num-input:focus{ border-color:var(--gold-bright); box-shadow:0 0 0 2px rgba(201,162,74,0.2); }
+  .num-input::-webkit-outer-spin-button, .num-input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .hint{ font-size:11.5px; color:#7c7869; letter-spacing:0.03em; text-align:center; max-width:360px; }
+  .history{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:340px; }
+  .chip{ width:24px; height:24px; border-radius:50%; font-size:10.5px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.2); font-family:'Inter',sans-serif; }
+
+  /* European betting table */
+  .felt{
+    background: radial-gradient(ellipse at 50% 0%, #17472f 0%, #0c2e1e 70%, #081f14 100%);
+    border:1px solid rgba(201,162,74,0.35);
+    border-radius:14px;
+    padding:16px;
+    width:100%;
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.55), 0 20px 40px rgba(0,0,0,0.5);
+  }
+  .felt-title{
+    font-family:'Cinzel',serif;
+    font-size:11px;
+    letter-spacing:0.3em;
+    text-transform:uppercase;
+    color:var(--gold);
+    text-align:center;
+    margin-bottom:12px;
+    opacity:0.9;
+  }
+  .table-grid{
+    display:grid;
+    grid-template-columns:38px repeat(12, 1fr);
+    grid-template-rows:repeat(3, 32px);
+    gap:3px;
+    width:100%;
+  }
+  .cell{
+    position:relative;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    color:#f2ead6;
+    border-radius:3px;
+    border:1px solid rgba(255,255,255,0.08);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .cell .dot{
+    position:absolute;
+    top:3px; right:3px;
+    width:5px; height:5px;
+    border-radius:50%;
+    background:#8fe3a0;
+    opacity:0.45;
+    box-shadow:none;
+    transition: opacity 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .cell.green-match .dot{ opacity:1; transform:scale(1.6); box-shadow:0 0 6px 2px rgba(143,227,160,0.9); }
+  .cell.red{ background:#a5233a; }
+  .cell.black{ background:#121317; }
+  .cell.green{ background:#1f6f54; grid-row:1/4; grid-column:1; font-size:15px; }
+  .cell.active{ box-shadow:0 0 0 2px var(--gold-bright), 0 0 14px rgba(240,212,136,0.8); transform:scale(1.06); z-index:2; }
+  .cell.green-match{ box-shadow:0 0 0 2px #8fe3a0, 0 0 14px rgba(143,227,160,0.75); transform:scale(1.06); z-index:2; }
+  .outside-row{
+    display:grid;
+    grid-template-columns:38px repeat(6, 1fr);
+    gap:3px;
+    width:100%;
+    margin-top:3px;
+  }
+  .outside-row .spacer{ visibility:hidden; }
+  .outside{
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:11px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:#e7e2d3;
+    background:rgba(255,255,255,0.03);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:3px;
+    padding:8px 0;
+  }
+  .outside.red-sw{ background:#a5233a; }
+  .outside.black-sw{ background:#121317; }
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="header">
+      <div class="eyebrow">Single Zero &middot; European</div>
+      <div class="title">Bezel Roulette</div>
+    </div>
+
+    <div class="layout">
+      <div class="panel-wheel">
+        <div class="case-wrap"><svg id="watch" viewBox="0 0 460 460"></svg></div>
+        <div class="readout">
+          <div class="num" id="readoutNum">—</div>
+          <div class="label" id="readoutLabel">twist a bezel or spin</div>
+        </div>
+        <div class="controls">
+          <input type="number" id="numInput" class="num-input" min="0" max="36" placeholder="0–36" />
+          <button class="crown-btn" id="goBtn">Turn to number</button>
+        </div>
+        <div class="hint">The outer bezel (1–37) is fixed — just a scale. Enter a number and the inner table rotates on its own to bring that number to the pointer. You can still drag the table by hand any time.</div>
+
+        <div class="controls">
+          <input type="text" id="bezelInput" class="num-input" style="width:140px" placeholder="e.g. 5, 12, 30" />
+          <button class="crown-btn" id="highlightBtn">Highlight</button>
+        </div>
+        <div class="hint">Enter one or more bezel positions (1–37), comma-separated. For each, it finds whatever wheel number currently sits at that same physical spot and lights all of them up in green — on the wheel and the felt table. It never highlights the typed number directly.</div>
+
+        <div class="history" id="history"></div>
+      </div>
+
+      <div class="panel-table">
+        <div class="felt">
+          <div class="felt-title">European Table &middot; Single Zero</div>
+          <div class="table-grid" id="tableGrid"></div>
+          <div class="outside-row" id="outsideRow"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+<script>
+(function(){
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById('watch');
+  const cx = 230, cy = 230;
+  const outerR = 192, innerR = 138, midR = (outerR+innerR)/2;
+  const order = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+  const N = order.length;
+  const step = 360/N;
+  const reds = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+  const outerR2 = 224, innerR2 = 202, midR2 = (outerR2+innerR2)/2;
+  const N2 = 37;
+  const step2 = 360/N2;
+
+  function colorOf(n){ if(n===0) return 'green'; return reds.has(n) ? 'red' : 'black'; }
+  function fillOf(n){ const c = colorOf(n); if(c==='green') return '#1f6f54'; if(c==='red') return '#a5233a'; return '#121317'; }
+
+  function polar(r, angleDeg){ const a = (angleDeg-90) * Math.PI/180; return [cx + r*Math.cos(a), cy + r*Math.sin(a)]; }
+  function arcPath(rIn, rOut, a0, a1){
+    const [x0o,y0o] = polar(rOut, a0), [x1o,y1o] = polar(rOut, a1), [x1i,y1i] = polar(rIn, a1), [x0i,y0i] = polar(rIn, a0);
+    const large = (a1-a0) > 180 ? 1 : 0;
+    return `M ${x0o} ${y0o} A ${rOut} ${rOut} 0 ${large} 1 ${x1o} ${y1o} L ${x1i} ${y1i} A ${rIn} ${rIn} 0 ${large} 0 ${x0i} ${y0i} Z`;
+  }
+  function el(tag, attrs){ const e = document.createElementNS(NS, tag); for(const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+  // ---- European betting table (flat layout) ----
+  function buildTable(){
+    const grid = document.getElementById('tableGrid');
+    const zero = document.createElement('div');
+    zero.className = 'cell green'; zero.textContent = '0'; zero.id = 'cell-0';
+    zero.appendChild(Object.assign(document.createElement('span'), {className:'dot'}));
+    grid.appendChild(zero);
+    // 3 rows x 12 columns: top row 3,6,...36 / middle 2,5,...35 / bottom 1,4,...34
+    for(let row=0; row<3; row++){
+      for(let col=0; col<12; col++){
+        const n = col*3 + (3-row);
+        const cell = document.createElement('div');
+        cell.className = 'cell ' + colorOf(n);
+        cell.textContent = n;
+        cell.id = 'cell-' + n;
+        cell.style.gridColumn = (col+2);
+        cell.style.gridRow = (row+1);
+        cell.appendChild(Object.assign(document.createElement('span'), {className:'dot'}));
+        grid.appendChild(cell);
+      }
+    }
+    const outsideRow = document.getElementById('outsideRow');
+    const spacer = document.createElement('div'); spacer.className='spacer'; outsideRow.appendChild(spacer);
+    const labels = [
+      {t:'1 to 18', cls:''}, {t:'even', cls:''}, {t:'red', cls:'red-sw'},
+      {t:'black', cls:'black-sw'}, {t:'odd', cls:''}, {t:'19 to 36', cls:''}
+    ];
+    labels.forEach(l=>{
+      const d = document.createElement('div');
+      d.className = 'outside ' + l.cls;
+      d.textContent = l.t;
+      outsideRow.appendChild(d);
+    });
+  }
+  let activeCell = null;
+  function highlightTable(n){
+    if(activeCell) activeCell.classList.remove('active');
+    const cell = document.getElementById('cell-' + n);
+    if(cell){ cell.classList.add('active'); activeCell = cell; }
+  }
+
+  let greenCells = [];
+  let greenPockets = [];
+  function clearGreen(){
+    greenCells.forEach(c => c.classList.remove('green-match'));
+    greenPockets.forEach(p => { p.style.stroke = '#0a0a0b'; p.style.strokeWidth = '1'; p.style.filter = ''; });
+    greenCells = []; greenPockets = [];
+  }
+  function highlightGreen(numbers){
+    clearGreen();
+    numbers.forEach(n=>{
+      const cell = document.getElementById('cell-' + n);
+      if(cell){ cell.classList.add('green-match'); greenCells.push(cell); }
+      const pocket = document.getElementById('pocket-' + n);
+      if(pocket){
+        pocket.style.stroke = '#8fe3a0';
+        pocket.style.strokeWidth = '3';
+        pocket.style.filter = 'drop-shadow(0 0 6px rgba(143,227,160,0.9))';
+        greenPockets.push(pocket);
+      }
+    });
+  }
+
+  const defs = el('defs',{});
+  defs.innerHTML = `
+    <radialGradient id="caseGrad" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#4a4e54"/><stop offset="55%" stop-color="#2c2f34"/><stop offset="100%" stop-color="#141518"/></radialGradient>
+    <radialGradient id="dialGrad" cx="40%" cy="35%" r="70%"><stop offset="0%" stop-color="#20242a"/><stop offset="70%" stop-color="#15171b"/><stop offset="100%" stop-color="#0c0d0f"/></radialGradient>
+    <linearGradient id="goldEdge" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f0d488"/><stop offset="100%" stop-color="#9c7c2f"/></linearGradient>
+    <linearGradient id="steelEdge" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#9aa0a8"/><stop offset="100%" stop-color="#565b62"/></linearGradient>
+    <radialGradient id="hubGrad" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#f0d488"/><stop offset="60%" stop-color="#c9a24a"/><stop offset="100%" stop-color="#8a6c28"/></radialGradient>
+  `;
+  svg.appendChild(defs);
+
+  svg.appendChild(el('circle',{cx,cy,r:230,fill:'url(#caseGrad)'}));
+  svg.appendChild(el('circle',{cx,cy,r:230,fill:'none',stroke:'#0a0a0b','stroke-width':2}));
+
+  const bezel2 = el('g',{id:'bezel2'});
+  for(let i=0;i<N2;i++){
+    const n = i+1;
+    const a0 = i*step2 - step2/2, a1 = i*step2 + step2/2;
+    bezel2.appendChild(el('path',{d: arcPath(innerR2, outerR2, a0, a1), fill: i%2===0 ? '#1c1e22' : '#26292e', stroke:'#0a0a0b','stroke-width':'1'}));
+    const [tx,ty] = polar(midR2, i*step2);
+    const text = el('text',{x:tx,y:ty,'text-anchor':'middle','dominant-baseline':'middle',transform:`rotate(${i*step2} ${tx} ${ty})`,fill:'#d9d4c4','font-family':'Inter, sans-serif','font-weight':'600','font-size':'10.5'});
+    text.textContent = n;
+    bezel2.appendChild(text);
+  }
+  for(let i=0;i<N2;i++){
+    const [x1,y1] = polar(outerR2+2, i*step2), [x2,y2] = polar(outerR2+8, i*step2);
+    bezel2.appendChild(el('line',{x1,y1,x2,y2,stroke:'url(#steelEdge)','stroke-width':1.2}));
+  }
+  svg.appendChild(bezel2);
+  svg.appendChild(el('circle',{cx,cy,r:outerR2,fill:'none',stroke:'url(#steelEdge)','stroke-width':2,opacity:0.85}));
+  svg.appendChild(el('circle',{cx,cy,r:innerR2,fill:'none',stroke:'url(#steelEdge)','stroke-width':2,opacity:0.85}));
+  svg.appendChild(el('circle',{cx,cy,r:(innerR2+outerR)/2,fill:'none',stroke:'#0a0a0b','stroke-width':(innerR2-outerR-2)}));
+
+  const bezel = el('g',{id:'bezel'});
+  for(let i=0;i<N;i++){
+    const n = order[i];
+    const a0 = i*step - step/2, a1 = i*step + step/2;
+    bezel.appendChild(el('path',{id:'pocket-'+n, d: arcPath(innerR, outerR, a0, a1), fill: fillOf(n), stroke:'#0a0a0b','stroke-width':'1'}));
+    const [tx,ty] = polar(midR, i*step);
+    const text = el('text',{x:tx,y:ty,'text-anchor':'middle','dominant-baseline':'middle',transform:`rotate(${i*step} ${tx} ${ty})`,fill: n===0 ? '#eafff2' : '#f2ead6','font-family':'Inter, sans-serif','font-weight': n===0 ? '700':'600','font-size': n===0 ? '15':'13'});
+    text.textContent = n;
+    bezel.appendChild(text);
+  }
+  for(let i=0;i<N;i++){
+    const [x1,y1] = polar(outerR+2, i*step), [x2,y2] = polar(outerR+9, i*step);
+    bezel.appendChild(el('line',{x1,y1,x2,y2,stroke:'url(#goldEdge)','stroke-width':1.4}));
+  }
+  svg.appendChild(bezel);
+  svg.appendChild(el('circle',{cx,cy,r:outerR,fill:'none',stroke:'url(#goldEdge)','stroke-width':2.5,opacity:0.85}));
+  svg.appendChild(el('circle',{cx,cy,r:innerR,fill:'none',stroke:'url(#goldEdge)','stroke-width':2.5,opacity:0.85}));
+
+  svg.appendChild(el('circle',{cx,cy,r:innerR-4,fill:'url(#dialGrad)'}));
+  const brand = el('text',{x:cx,y:cy-40,'text-anchor':'middle',fill:'#c9a24a','font-family':'Cinzel, serif','font-size':'12','letter-spacing':'3'});
+  brand.textContent = 'EUROPEAN'; svg.appendChild(brand);
+  const brand2 = el('text',{x:cx,y:cy-24,'text-anchor':'middle',fill:'#8b8a82','font-family':'Cinzel, serif','font-size':'9','letter-spacing':'2'});
+  brand2.textContent = 'ROULETTE CO.'; svg.appendChild(brand2);
+
+  svg.appendChild(el('rect',{x:cx-24,y:cy+2,width:48,height:34,rx:4,fill:'#0b0c0d',stroke:'#c9a24a','stroke-width':1.5}));
+  const winNumText = el('text',{id:'dialNum',x:cx,y:cy+27,'text-anchor':'middle',fill:'#efe6d2','font-family':'Cinzel, serif','font-weight':'700','font-size':'22'});
+  winNumText.textContent='0'; svg.appendChild(winNumText);
+  const subLabel = el('text',{x:cx,y:cy+52,'text-anchor':'middle',fill:'#6f6c62','font-family':'Inter, sans-serif','font-size':'9','letter-spacing':'2'});
+  subLabel.textContent='SINGLE ZERO'; svg.appendChild(subLabel);
+
+  svg.appendChild(el('circle',{cx,cy,r:6,fill:'url(#hubGrad)',stroke:'#5c4a1e','stroke-width':1}));
+
+  const pointer = el('g',{class:'pointer-jewel'});
+  pointer.appendChild(el('polygon',{points:`${cx-8},${cy-outerR2-14} ${cx+8},${cy-outerR2-14} ${cx},${cy-outerR2+2}`, fill:'url(#goldEdge)'}));
+  pointer.appendChild(el('circle',{cx,cy:cy-outerR2-18,r:5,fill:'#7fb2b8',stroke:'#0a0a0b','stroke-width':1}));
+  svg.appendChild(pointer);
+
+  let rotation = 0, dragging1 = false, lastAngle1 = 0, lastTime1 = 0, velocity1 = 0, animId1 = null, lastTick1 = null;
+  let rotation2 = 0, dragging2 = false, lastAngle2 = 0, lastTime2 = 0, velocity2 = 0, animId2 = null, lastTick2 = null;
+  let activeRing = null;
+  let spinning = false;
+
+  const dialNum = document.getElementById('dialNum');
+  const readoutNum = document.getElementById('readoutNum');
+  const readoutLabel = document.getElementById('readoutLabel');
+  const historyEl = document.getElementById('history');
+  const numInput = document.getElementById('numInput');
+  const goBtn = document.getElementById('goBtn');
+  const bezelInput = document.getElementById('bezelInput');
+  const highlightBtn = document.getElementById('highlightBtn');
+  const history = [];
+
+  function pointFromEvent(e){
+    const rect = svg.getBoundingClientRect();
+    const scaleX = 460/rect.width, scaleY = 460/rect.height;
+    const clientX = e.touches? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches? e.touches[0].clientY : e.clientY;
+    const px = (clientX - rect.left)*scaleX - cx;
+    const py = (clientY - rect.top)*scaleY - cy;
+    return {px,py, angle: Math.atan2(py,px)*180/Math.PI, radius: Math.sqrt(px*px+py*py)};
+  }
+
+  function idx1(){ let i = Math.round((-rotation)/step) % N; if(i<0) i+=N; return i; }
+  function idx2(){ let i = Math.round((-rotation2)/step2) % N2; if(i<0) i+=N2; return i; }
+
+  function applyRotation1(){ bezel.setAttribute('transform', `rotate(${rotation} ${cx} ${cy})`); const i = idx1(); if(i !== lastTick1){ lastTick1 = i; tickPulse(bezel); } refreshHighlight(); }
+  function applyRotation2(){ bezel2.setAttribute('transform', `rotate(${rotation2} ${cx} ${cy})`); const i = idx2(); if(i !== lastTick2){ lastTick2 = i; tickPulse(bezel2); } }
+  function tickPulse(node){ node.style.transition = 'filter 0.08s ease'; node.style.filter = 'brightness(1.15)'; setTimeout(()=>{ node.style.filter='brightness(1)'; }, 80); }
+
+  function updateReadout(i, animatePulse){
+    const n = order[i];
+    dialNum.textContent = n; readoutNum.textContent = n; readoutNum.style.background = fillOf(n);
+    const c = colorOf(n);
+    readoutLabel.textContent = c.toUpperCase() + (n===0 ? ' \u00b7 ZERO' : '');
+    highlightTable(n);
+    if(animatePulse){ history.unshift(n); if(history.length>10) history.pop(); renderHistory(); }
+  }
+  function renderHistory(){
+    historyEl.innerHTML = '';
+    history.forEach(n=>{ const d = document.createElement('div'); d.className='chip'; d.style.background = fillOf(n); d.textContent = n; historyEl.appendChild(d); });
+  }
+
+  function animateTo(getRotation,setRotation,applyFn,target, duration, onDone){
+    const start = getRotation(); const t0 = performance.now(); let raf;
+    function step_(){
+      const t = Math.min(1,(performance.now()-t0)/duration);
+      const ease = 1-Math.pow(1-t,3);
+      setRotation(start + (target-start)*ease); applyFn();
+      if(t<1){ raf = requestAnimationFrame(step_); } else { setRotation(target); applyFn(); if(onDone) onDone(); }
+    }
+    raf = requestAnimationFrame(step_); return raf;
+  }
+
+  function snap1(withHistory){
+    const i = idx1(); const targetRotation = -i*step; let diff = targetRotation - rotation;
+    diff = ((diff+180)%360+360)%360 - 180;
+    animId1 = animateTo(()=>rotation,(v)=>{rotation=v;},applyRotation1, rotation+diff, 320, ()=>{ updateReadout(i, withHistory); });
+  }
+  function snap2(){
+    const i = idx2(); const targetRotation = -i*step2; let diff = targetRotation - rotation2;
+    diff = ((diff+180)%360+360)%360 - 180;
+    animId2 = animateTo(()=>rotation2,(v)=>{rotation2=v;},applyRotation2, rotation2+diff, 320);
+  }
+
+  // Only the inner table (ring 1) responds to drag — the outer bezel is fixed.
+  function onDown(e){
+    if(spinning) return;
+    const p = pointFromEvent(e);
+    if(p.radius >= innerR-4 && p.radius <= outerR+10){
+      activeRing = '1'; dragging1 = true; cancelAnimationFrame(animId1);
+      lastAngle1 = p.angle; lastTime1 = performance.now(); velocity1 = 0;
+    } else { activeRing = null; }
+    if(activeRing) svg.style.cursor='grabbing';
+  }
+
+  function onMove(e){
+    if(!activeRing) return;
+    e.preventDefault();
+    const p = pointFromEvent(e);
+    if(activeRing==='1' && dragging1){
+      let d = p.angle - lastAngle1; d = ((d+180)%360+360)%360 - 180;
+      rotation += d; applyRotation1();
+      const now = performance.now(); const dt = Math.max(1, now-lastTime1);
+      velocity1 = d/dt; lastAngle1 = p.angle; lastTime1 = now;
+    }
+  }
+
+  function onUp(){
+    svg.style.cursor='grab';
+    if(activeRing==='1' && dragging1){
+      dragging1 = false; let v = velocity1*16;
+      function inertia(){ v *= 0.92; rotation += v; applyRotation1(); if(Math.abs(v) > 0.15){ animId1 = requestAnimationFrame(inertia); } else { snap1(true); } }
+      if(Math.abs(v) > 0.3) inertia(); else snap1(true);
+    }
+    activeRing = null;
+  }
+
+  svg.addEventListener('pointerdown', onDown);
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+
+  // Number input turns the table (ring 1 only) to the requested number — the bezel never moves.
+  function goToNumber(){
+    if(spinning) return;
+    const raw = numInput.value.trim();
+    if(raw === ''){ return; }
+    const n = parseInt(raw, 10);
+    if(isNaN(n) || n < 0 || n > 36){
+      readoutLabel.textContent = 'enter 0–36';
+      return;
+    }
+    const targetIdx = order.indexOf(n);
+    spinning = true; goBtn.disabled = true; readoutLabel.textContent = 'turning…';
+    cancelAnimationFrame(animId1);
+    const targetRotation = -targetIdx*step;
+    let diff = targetRotation - rotation;
+    diff = ((diff+180)%360+360)%360 - 180;
+    // add a couple of extra full turns so the motion reads as an intentional spin, always landing exactly on n
+    const extraTurns = 2*360;
+    animId1 = animateTo(()=>rotation,(v)=>{rotation=v;},applyRotation1, rotation+diff+extraTurns, 1800, ()=>{
+      updateReadout(targetIdx, true); spinning = false; goBtn.disabled = false;
+    });
+  }
+  goBtn.addEventListener('click', goToNumber);
+  numInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') goToNumber(); });
+
+  let lastBezelPositions = [];
+  function wheelNumbersForBezelPositions(positions){
+    return positions.map(n=>{
+      const ib = n - 1;
+      const angleB = ib * step2;
+      let j = Math.round((angleB - rotation) / step) % N;
+      if(j < 0) j += N;
+      return order[j];
+    });
+  }
+  function refreshHighlight(){
+    if(lastBezelPositions.length === 0) return;
+    highlightGreen(wheelNumbersForBezelPositions(lastBezelPositions));
+  }
+
+  function doHighlight(){
+    const raw = bezelInput.value.trim();
+    if(raw === '') return;
+    const parts = raw.split(',').map(s=>s.trim()).filter(s=>s.length>0);
+    if(parts.length === 0) return;
+    const positions = [];
+    for(const part of parts){
+      const n = parseInt(part, 10);
+      if(isNaN(n) || n < 1 || n > 37){
+        readoutLabel.textContent = 'enter 1–37, comma separated';
+        return;
+      }
+      positions.push(n);
+    }
+    lastBezelPositions = positions;
+    highlightGreen(wheelNumbersForBezelPositions(positions));
+  }
+  highlightBtn.addEventListener('click', doHighlight);
+  bezelInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') doHighlight(); });
+
+  buildTable();
+  applyRotation1(); applyRotation2(); updateReadout(idx1(), false);
+})();
+</script>
+</body>
+</html>
